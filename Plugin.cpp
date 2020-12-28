@@ -11,22 +11,24 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 
 	//Bit information about the plugin
 	//Please fill this in!!
-	info.BotName = "BotNameTEST";
-	info.Student_FirstName = "Foo";
-	info.Student_LastName = "Bar";
-	info.Student_Class = "2DAEx";
+	info.BotName = "Gerry";
+	info.Student_FirstName = "Rik";
+	info.Student_LastName = "Fabri";
+	info.Student_Class = "2DAE01";
 }
 
 //Called only once
 void Plugin::DllInit()
 {
 	//Called when the plugin is loaded
+	m_ArbitraryGoal = Elite::Vector2(std::rand() % 70, std::rand() % 70);
+	m_IsInHouse = false;
 }
 
 //Called only once
 void Plugin::DllShutdown()
 {
-	//Called wheb the plugin gets unloaded
+	//Called when the plugin gets unloaded
 }
 
 //Called only once, during initialization
@@ -87,12 +89,81 @@ void Plugin::Update(float dt)
 //This function calculates the new SteeringOutput, called once per frame
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
+	// -----------------------------------------------------------
+
+	std::vector<EntityInfo> entities = GetEntitiesInFOV();
+	for (auto entity : entities)
+	{
+		//std::cout << (int)entity.Type << std::endl;
+	}
+
+	EnemyInfo inf;
+	HouseInfo hInf;
+
+	float maxDistance{ 70 };
+
+
+
+	auto agent = m_pInterface->Agent_GetInfo();
+	float angle = agent.Orientation - M_PI/2;
+	if (Elite::DistanceSquared(m_ArbitraryGoal, agent.Position) < 9)
+	{
+		m_ArbitraryGoal = Elite::Vector2(std::rand() % 70, std::rand() % 70);
+	}
+	Elite::Vector2 nextTargetPos = m_ArbitraryGoal;
+	float distanceFromCenter = Elite::Distance(agent.Position, { 0,0 });
+	//if (distanceFromCenter * distanceFromCenter > maxDistance * maxDistance)
+	//{
+	//	nextTargetPos = nextTargetPos + Elite::Vector2()
+	//}
+
+	//std::cout << distanceFromCenter << std::endl;
+
+	auto housesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
+
+	if (housesInFOV.size() > 0)
+	{
+		m_pLastHouse = &housesInFOV[0];
+		nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_pLastHouse->Center);
+	}
+	else
+	{
+		m_pLastHouse = nullptr;
+	}
+
+	if (m_pLastHouse)
+	{
+		if(agent.Position.x > m_pLastHouse->Center.x - m_pLastHouse->Size.x &&
+			agent.Position.x < m_pLastHouse->Center.x + m_pLastHouse->Size.x &&
+			agent.Position.y > m_pLastHouse->Center.y - m_pLastHouse->Size.y &&
+			agent.Position.y < m_pLastHouse->Center.y + m_pLastHouse->Size.y)
+		{
+			m_IsInHouse = true;
+		}
+		else
+		{
+			m_IsInHouse = false;
+		}
+	}
+
+	if (m_IsInHouse)
+	{
+		nextTargetPos = m_ArbitraryGoal;
+	}
+	else
+	{
+		if(m_pLastHouse)
+			nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_pLastHouse->Center);
+	}
+
+	// -----------------------------------------------------------
+
 	auto steering = SteeringPlugin_Output();
 
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
-	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
+	//auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
 
 	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
@@ -168,6 +239,7 @@ void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
 	m_pInterface->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
+	m_pInterface->Draw_SolidCircle(m_ArbitraryGoal, .7f, { 0,0 }, { 1, 0, 0 });
 }
 
 vector<HouseInfo> Plugin::GetHousesInFOV() const

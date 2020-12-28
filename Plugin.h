@@ -22,6 +22,11 @@ public:
 	void Render(float dt) const override;
 
 private:
+	//Tests
+	Elite::Vector2 m_ArbitraryGoal;
+	bool m_IsInHouse;
+	HouseInfo* m_pLastHouse;
+
 	//Interface, used to request data from/perform actions with the AI Framework
 	IExamInterface* m_pInterface = nullptr;
 	vector<HouseInfo> GetHousesInFOV() const;
