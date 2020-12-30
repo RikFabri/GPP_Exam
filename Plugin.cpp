@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "Plugin.h"
 #include "IExamInterface.h"
+#include "Predicates\AIPredicates.h"
+
+#include <algorithm>
+
+using namespace Elite;
 
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
@@ -21,14 +26,59 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 void Plugin::DllInit()
 {
 	//Called when the plugin is loaded
-	m_ArbitraryGoal = Elite::Vector2(std::rand() % 70, std::rand() % 70);
-	m_IsInHouse = false;
+
+	m_Target = Elite::Vector2(0, 2000);
+
+	//Construct behaviourTree
+	using namespace BehaviourTree;
+	float angle = 0;
+	m_pBehaviourTree = new Selector
+	{ {
+			new Sequence
+			{ {
+			new Conditional([this]()
+				{
+					return AIPredicates::SeesZombie(std::bind(&Plugin::GetEntitiesInFOV, this));
+				}
+			),
+			new Action([this]() -> ReturnState 
+				{
+					auto agent = m_pInterface->Agent_GetInfo();
+					auto entities = GetEntitiesInFOV();
+
+					for (const EntityInfo& entity : entities)
+					{
+						if (entity.Type == eEntityType::ENEMY)
+						{
+							//Vector2 direction{ agent.Position - entity.Location };
+							//float magnitude = direction.Normalize();
+							//magnitude = 1 / magnitude;
+							
+							m_ScaredImpulses.push_back(Vector3{entity.Location, 6.f});
+						}
+					}
+					return ReturnState::Success;
+				}),
+		} },
+		//Wander
+		new Action([this, angle]() mutable -> ReturnState
+		{
+			auto agent = m_pInterface->Agent_GetInfo();
+
+			float angle = Elite::randomFloat(2*M_PI);
+			float distance = Elite::randomFloat(100);
+			if (Elite::Distance(m_Target, agent.Position) <= 20)
+				m_Target = Vector2(cos(angle) * distance, sin(angle) * distance);
+			return ReturnState::Success;
+		})
+	} };
 }
 
 //Called only once
 void Plugin::DllShutdown()
 {
 	//Called when the plugin gets unloaded
+	SAFE_DELETE(m_pBehaviourTree);
 }
 
 //Called only once, during initialization
@@ -89,81 +139,17 @@ void Plugin::Update(float dt)
 //This function calculates the new SteeringOutput, called once per frame
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
-	// -----------------------------------------------------------
+	m_pBehaviourTree->Run();
 
-	std::vector<EntityInfo> entities = GetEntitiesInFOV();
-	for (auto entity : entities)
-	{
-		//std::cout << (int)entity.Type << std::endl;
-	}
-
-	EnemyInfo inf;
-	HouseInfo hInf;
-
-	float maxDistance{ 70 };
-
-
-
-	auto agent = m_pInterface->Agent_GetInfo();
-	float angle = agent.Orientation - M_PI/2;
-	if (Elite::DistanceSquared(m_ArbitraryGoal, agent.Position) < 9)
-	{
-		m_ArbitraryGoal = Elite::Vector2(std::rand() % 70, std::rand() % 70);
-	}
-	Elite::Vector2 nextTargetPos = m_ArbitraryGoal;
-	float distanceFromCenter = Elite::Distance(agent.Position, { 0,0 });
-	//if (distanceFromCenter * distanceFromCenter > maxDistance * maxDistance)
-	//{
-	//	nextTargetPos = nextTargetPos + Elite::Vector2()
-	//}
-
-	//std::cout << distanceFromCenter << std::endl;
-
-	auto housesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
-
-	if (housesInFOV.size() > 0)
-	{
-		m_pLastHouse = &housesInFOV[0];
-		nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_pLastHouse->Center);
-	}
-	else
-	{
-		m_pLastHouse = nullptr;
-	}
-
-	if (m_pLastHouse)
-	{
-		if(agent.Position.x > m_pLastHouse->Center.x - m_pLastHouse->Size.x &&
-			agent.Position.x < m_pLastHouse->Center.x + m_pLastHouse->Size.x &&
-			agent.Position.y > m_pLastHouse->Center.y - m_pLastHouse->Size.y &&
-			agent.Position.y < m_pLastHouse->Center.y + m_pLastHouse->Size.y)
-		{
-			m_IsInHouse = true;
-		}
-		else
-		{
-			m_IsInHouse = false;
-		}
-	}
-
-	if (m_IsInHouse)
-	{
-		nextTargetPos = m_ArbitraryGoal;
-	}
-	else
-	{
-		if(m_pLastHouse)
-			nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_pLastHouse->Center);
-	}
-
-	// -----------------------------------------------------------
+	m_ScaredImpulses.erase(std::remove_if(m_ScaredImpulses.begin(), m_ScaredImpulses.end(), [](const Vector3& v) { return v.z <= 0.f; }), m_ScaredImpulses.end());
 
 	auto steering = SteeringPlugin_Output();
 
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
-	//auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
+	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
+	nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target); 
 
 	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
@@ -214,13 +200,39 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
 	steering.LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
 
-	if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
+	steering.LinearVelocity = { 0, 0 };
+	Vector2 scaredVector{ 0, 0 };
+	for (Vector3& vector : m_ScaredImpulses)
 	{
-		steering.LinearVelocity = Elite::ZeroVector2;
+		Vector2 direction{ agentInfo.Position - Vector2{vector.x, vector.y} };
+		float magnitude = direction.Normalize();
+		magnitude = 1 / (magnitude * 0.7);
+		float strength = vector.z;
+
+
+		scaredVector += direction * magnitude * strength;
+		vector.z -= dt;
+		std::cout << vector.z << std::endl;
 	}
+	std::cout << m_ScaredImpulses.size() << std::endl;
+
+	steering.LinearVelocity += Elite::GetNormalized(nextTargetPos - agentInfo.Position);
+	steering.LinearVelocity += scaredVector;
+	steering.LinearVelocity = Elite::GetNormalized(steering.LinearVelocity) * agentInfo.MaxLinearSpeed;
+
+	//if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
+	//{
+	//	steering.LinearVelocity = Elite::ZeroVector2;
+	//}
 
 	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
-	steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
+	steering.AutoOrient = true; //Setting AutoOrientate to True overrides the AngularVelocity
+	//steering.AngularVelocity = 10;
+	float DesiredOrientation = Elite::GetOrientationFromVelocity(agentInfo.LinearVelocity);
+	float velocity = DesiredOrientation - agentInfo.Orientation;
+	steering.AngularVelocity = velocity;
+
+	
 
 	steering.RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
 
@@ -239,7 +251,6 @@ void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
 	m_pInterface->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
-	m_pInterface->Draw_SolidCircle(m_ArbitraryGoal, .7f, { 0,0 }, { 1, 0, 0 });
 }
 
 vector<HouseInfo> Plugin::GetHousesInFOV() const

@@ -4,10 +4,12 @@
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="BehaviourTree\BehaviourTree.cpp" />
+    <ClCompile Include="Predicates\AIPredicates.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="BehaviourTree\BehaviourTree.h" />
+    <ClInclude Include="Predicates\AIPredicates.h" />
   </ItemGroup>
 </Project>

@@ -34,6 +34,11 @@ BehaviourTree::ReturnState BehaviourTree::Action::Run()
 	return m_Action();
 }
 
+BehaviourTree::Sequence::Sequence(std::vector<INode*> NodePtrs)
+	: Composite(NodePtrs)
+{
+}
+
 BehaviourTree::ReturnState BehaviourTree::Sequence::Run()
 {
 	for (auto childNodePtr : m_NodePointers)
@@ -48,6 +53,11 @@ BehaviourTree::ReturnState BehaviourTree::Sequence::Run()
 			return returnState;
 		}
 	}
+}
+
+BehaviourTree::Selector::Selector(std::vector<INode*> NodePtrs)
+	: Composite(NodePtrs)
+{
 }
 
 BehaviourTree::ReturnState BehaviourTree::Selector::Run()

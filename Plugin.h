@@ -1,6 +1,7 @@
 #pragma once
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
+#include "BehaviourTree\BehaviourTree.h"
 
 class IBaseInterface;
 class IExamInterface;
@@ -22,10 +23,13 @@ public:
 	void Render(float dt) const override;
 
 private:
-	//Tests
-	Elite::Vector2 m_ArbitraryGoal;
-	bool m_IsInHouse;
-	HouseInfo* m_pLastHouse;
+	////Tests
+	//Elite::Vector2 m_ArbitraryGoal;
+	//bool m_IsInHouse;
+	//HouseInfo* m_pLastHouse;
+	std::vector<Elite::Vector3> m_ScaredImpulses;
+	BehaviourTree::INode* m_pBehaviourTree;
+	Elite::Vector2 m_Forward;
 
 	//Interface, used to request data from/perform actions with the AI Framework
 	IExamInterface* m_pInterface = nullptr;

@@ -37,6 +37,8 @@ namespace BehaviourTree
 	class Sequence final : public Composite
 	{
 	public:
+		Sequence(std::vector<INode*> NodePtrs);
+
 		ReturnState Run() override;
 	private:
 	};
@@ -45,6 +47,8 @@ namespace BehaviourTree
 	class Selector final : public Composite
 	{
 	public:
+		Selector(std::vector<INode*> NodePtrs);
+
 		ReturnState Run() override;
 	};
 	// --------------------------------------------------------
