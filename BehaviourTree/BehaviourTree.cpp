@@ -75,3 +75,28 @@ BehaviourTree::ReturnState BehaviourTree::Selector::Run()
 		}
 	}
 }
+
+BehaviourTree::PartialSequence::PartialSequence(std::vector<INode*> NodePtrs)
+	: Composite(NodePtrs)
+	, m_RunningIndex(0)
+{
+}
+
+BehaviourTree::ReturnState BehaviourTree::PartialSequence::Run()
+{
+	for (size_t index = m_RunningIndex; index < m_NodePointers.size(); ++index)
+	{
+		ReturnState returnState = m_NodePointers[index]->Run();
+
+		switch (returnState)
+		{
+		case BehaviourTree::ReturnState::Success:
+			m_RunningIndex = 0;
+			continue;
+		case BehaviourTree::ReturnState::Running:
+			m_RunningIndex = index;
+		default:
+			return returnState;
+		}
+	}
+}

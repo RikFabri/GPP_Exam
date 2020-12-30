@@ -27,7 +27,9 @@ void Plugin::DllInit()
 {
 	//Called when the plugin is loaded
 
-	m_Target = Elite::Vector2(0, 2000);
+	m_Target = Elite::Vector2(0, 0);
+	m_LookAt = m_Target;
+	m_AutoOrient = true;
 
 	//Construct behaviourTree
 	using namespace BehaviourTree;
@@ -43,6 +45,7 @@ void Plugin::DllInit()
 			),
 			new Action([this]() -> ReturnState 
 				{
+					m_AutoOrient = true;
 					auto agent = m_pInterface->Agent_GetInfo();
 					auto entities = GetEntitiesInFOV();
 
@@ -61,16 +64,45 @@ void Plugin::DllInit()
 				}),
 		} },
 		//Wander
-		new Action([this, angle]() mutable -> ReturnState
-		{
-			auto agent = m_pInterface->Agent_GetInfo();
+		new PartialSequence(
+			{
+				new Conditional([this]() -> bool
+					{
+						std::cout << "doing wander sequence" << std::endl;
+						auto agent = m_pInterface->Agent_GetInfo();
 
-			float angle = Elite::randomFloat(2*M_PI);
-			float distance = Elite::randomFloat(100);
-			if (Elite::Distance(m_Target, agent.Position) <= 20)
-				m_Target = Vector2(cos(angle) * distance, sin(angle) * distance);
-			return ReturnState::Success;
-		})
+						return Elite::Distance(m_Target, agent.Position) <= 20;
+					}),
+				new Action([this]() -> ReturnState 
+					{
+						m_AutoOrient = false;
+
+						auto agent = m_pInterface->Agent_GetInfo();
+						float distance = Elite::randomFloat(100);
+						float angle = Elite::randomFloat(2 * M_PI);
+						m_LookAt = Vector2(cos(angle) * distance, sin(angle) * distance);
+
+						return ReturnState::Success;
+					}),
+				new Action([this]() -> ReturnState
+					{
+						auto agent = m_pInterface->Agent_GetInfo();
+
+						if (Elite::DistanceSquared(m_Target, agent.Position) <= 10)
+							return ReturnState::Success;
+
+						return ReturnState::Running;
+					}),
+				new Action([this]() mutable -> ReturnState
+				{
+					auto agent = m_pInterface->Agent_GetInfo();
+
+					m_Target = m_LookAt;
+					m_AutoOrient = true;
+					m_ScaredImpulses.push_back(Vector3{ agent.Position, 2.f });
+					return ReturnState::Success;
+				})
+			})
 	} };
 }
 
@@ -209,12 +241,16 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		magnitude = 1 / (magnitude * 0.7);
 		float strength = vector.z;
 
+		Vector2 addedImpulse = direction * magnitude * strength;
+		//auto sumVector = scaredVector + addedImpulse;
+		//if (sumVector.SqrtMagnitude() <= 1.2f)
+		//	addedImpulse += Vector2{ -addedImpulse.y, addedImpulse.x };
 
-		scaredVector += direction * magnitude * strength;
+		scaredVector += addedImpulse;
 		vector.z -= dt;
-		std::cout << vector.z << std::endl;
+		//std::cout << vector.z << std::endl;
 	}
-	std::cout << m_ScaredImpulses.size() << std::endl;
+	//std::cout << m_ScaredImpulses.size() << std::endl;
 
 	steering.LinearVelocity += Elite::GetNormalized(nextTargetPos - agentInfo.Position);
 	steering.LinearVelocity += scaredVector;
@@ -226,9 +262,9 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	//}
 
 	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
-	steering.AutoOrient = true; //Setting AutoOrientate to True overrides the AngularVelocity
+	steering.AutoOrient = m_AutoOrient; //Setting AutoOrientate to True overrides the AngularVelocity
 	//steering.AngularVelocity = 10;
-	float DesiredOrientation = Elite::GetOrientationFromVelocity(agentInfo.LinearVelocity);
+	float DesiredOrientation = Elite::GetOrientationFromVelocity(m_LookAt - agentInfo.Position);
 	float velocity = DesiredOrientation - agentInfo.Orientation;
 	steering.AngularVelocity = velocity;
 

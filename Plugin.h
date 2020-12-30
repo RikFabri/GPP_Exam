@@ -30,6 +30,8 @@ private:
 	std::vector<Elite::Vector3> m_ScaredImpulses;
 	BehaviourTree::INode* m_pBehaviourTree;
 	Elite::Vector2 m_Forward;
+	Elite::Vector2 m_LookAt;
+	bool m_AutoOrient;
 
 	//Interface, used to request data from/perform actions with the AI Framework
 	IExamInterface* m_pInterface = nullptr;

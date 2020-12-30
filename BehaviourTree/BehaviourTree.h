@@ -43,6 +43,17 @@ namespace BehaviourTree
 	private:
 	};
 
+	// Partial sequence node
+	class PartialSequence final : public Composite
+	{
+	public:
+		PartialSequence(std::vector<INode*> NodePtrs);
+
+		ReturnState Run() override;
+	private:
+		size_t m_RunningIndex;
+	};
+
 	// Selector node
 	class Selector final : public Composite
 	{
