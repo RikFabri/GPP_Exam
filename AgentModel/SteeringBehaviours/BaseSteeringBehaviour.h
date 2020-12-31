@@ -4,11 +4,11 @@
 struct AgentModel;
 class IExamInterface;
 
-class SteeringBehaviour
+class BaseSteeringBehaviour
 {
 public:
-	SteeringBehaviour() = default;
-	virtual ~SteeringBehaviour() = default;
+	BaseSteeringBehaviour() = default;
+	virtual ~BaseSteeringBehaviour() = default;
 
 	virtual Elite::Vector2 UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface) = 0;
 private:

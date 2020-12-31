@@ -6,8 +6,8 @@
     <ClCompile Include="BehaviourTree\BehaviourTree.cpp" />
     <ClCompile Include="Predicates\AIPredicates.cpp" />
     <ClCompile Include="AgentModel\AgentModel.cpp" />
-    <ClCompile Include="AgentModel\SteeringBehaviours\SteeringBehaviour.cpp" />
-    <ClCompile Include="AgentModel\SteeringBehaviours\Seek.cpp" />
+    <ClCompile Include="AgentModel\SteeringBehaviours\SteeringBehaviours.cpp" />
+    <ClCompile Include="AgentModel\SteeringBehaviours\BaseSteeringBehaviour.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
@@ -15,7 +15,7 @@
     <ClInclude Include="BehaviourTree\BehaviourTree.h" />
     <ClInclude Include="Predicates\AIPredicates.h" />
     <ClInclude Include="AgentModel\AgentModel.h" />
-    <ClInclude Include="AgentModel\SteeringBehaviours\SteeringBehaviour.h" />
-    <ClInclude Include="AgentModel\SteeringBehaviours\Seek.h" />
+    <ClInclude Include="AgentModel\SteeringBehaviours\SteeringBehaviours.h" />
+    <ClInclude Include="AgentModel\SteeringBehaviours\BaseSteeringBehaviour.h" />
   </ItemGroup>
 </Project>

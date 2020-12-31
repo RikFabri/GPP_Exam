@@ -2,15 +2,22 @@
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
 #include "..\BehaviourTree\BehaviourTree.h"
+#include <vector>
 
-class SteeringBehaviour;
+class BaseSteeringBehaviour;
 
 struct AgentModel : AgentInfo
 {
-	std::vector<SteeringBehaviour*> steeringBehaviour;
-	SteeringBehaviour* pCurrentSteering;
+	std::vector<Elite::Vector3> ScaredMap;
+
+	BaseSteeringBehaviour* pCurrentSteering;
+
 	BehaviourTree::INode* pBehaviourTree;
 
 	Elite::Vector2 Target;
+
+	void SetAgentInfo(const AgentInfo& agentInfo);
+	
+	~AgentModel();
 };
 

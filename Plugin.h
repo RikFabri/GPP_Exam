@@ -2,6 +2,7 @@
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
 #include "BehaviourTree\BehaviourTree.h"
+#include "AgentModel\AgentModel.h"
 
 class IBaseInterface;
 class IExamInterface;
@@ -23,6 +24,8 @@ public:
 	void Render(float dt) const override;
 
 private:
+	AgentModel m_AgentModel;
+
 	////Tests
 	//Elite::Vector2 m_ArbitraryGoal;
 	//bool m_IsInHouse;
