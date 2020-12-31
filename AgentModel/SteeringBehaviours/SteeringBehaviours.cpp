@@ -15,14 +15,14 @@ CombinedSteering::CombinedSteering(std::vector<WeightedSteering> steeringBehavio
 #pragma endregion
 
 #pragma region Steering Behaviours
-Vector2 Seek::UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface)
+Vector2 Seek::UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface)
 {
-    auto dest = pInterface->NavMesh_GetClosestPathPoint(pAgent->Target);
+    auto dest = pInterface->NavMesh_GetClosestPathPoint(pAgent->GetTarget());
 
     return GetNormalized(dest - pAgent->Position) * pAgent->MaxLinearSpeed;
 }
 
-Vector2 CombinedSteering::UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface)
+Vector2 CombinedSteering::UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface)
 {
     Vector2 steering{ 0, 0 };
 
@@ -32,11 +32,11 @@ Vector2 CombinedSteering::UpdateSteering(float dt, AgentModel* pAgent, const IEx
     return GetNormalized(steering) * pAgent->MaxLinearSpeed;
 }
 
-Vector2 ScaredSteering::UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface)
+Vector2 ScaredSteering::UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface)
 {
 	Vector2 scaredVector{ 0, 0 };
 
-	for (Vector3& vector : pAgent->ScaredMap)
+	for (const Vector3& vector : pAgent->GetScaredMap())
 	{
 		Vector2 direction{ pAgent->Position - Vector2{vector.x, vector.y} };
 		float magnitude = direction.Normalize();
@@ -49,7 +49,7 @@ Vector2 ScaredSteering::UpdateSteering(float dt, AgentModel* pAgent, const IExam
 		//	addedImpulse += Vector2{ -addedImpulse.y, addedImpulse.x };
 
 		scaredVector += addedImpulse;
-		vector.z -= dt;
+		//vector.z -= dt;
 	}
 	return scaredVector;
 }

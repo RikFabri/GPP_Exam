@@ -5,7 +5,7 @@ class Seek :
     public BaseSteeringBehaviour
 {
 public:
-    virtual Elite::Vector2 UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface) override;
+    virtual Elite::Vector2 UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface) override;
 };
 
 
@@ -22,7 +22,7 @@ class CombinedSteering final
 public:
     CombinedSteering(std::vector<WeightedSteering> steeringBehaviours);
 
-    virtual Elite::Vector2 UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface) override;
+    virtual Elite::Vector2 UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface) override;
 private:
     std::vector<WeightedSteering> m_WeightedSteeringBehaviours;
 };
@@ -32,5 +32,5 @@ class ScaredSteering final
     : public BaseSteeringBehaviour
 {
 public:
-    Elite::Vector2 UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface) override;
+    Elite::Vector2 UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface) override;
 };

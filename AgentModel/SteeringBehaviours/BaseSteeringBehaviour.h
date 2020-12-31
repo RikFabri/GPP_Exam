@@ -1,7 +1,7 @@
 #pragma once
 #include "Exam_HelperStructs.h"
 
-struct AgentModel;
+class AgentModel;
 class IExamInterface;
 
 class BaseSteeringBehaviour
@@ -10,7 +10,7 @@ public:
 	BaseSteeringBehaviour() = default;
 	virtual ~BaseSteeringBehaviour() = default;
 
-	virtual Elite::Vector2 UpdateSteering(float dt, AgentModel* pAgent, const IExamInterface* pInterface) = 0;
+	virtual Elite::Vector2 UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface) = 0;
 private:
 
 };

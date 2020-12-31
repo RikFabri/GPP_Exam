@@ -24,18 +24,18 @@ public:
 	void Render(float dt) const override;
 
 private:
-	AgentModel m_AgentModel;
+	AgentModel* m_pAgentModel;
 
 	////Tests
 	//Elite::Vector2 m_ArbitraryGoal;
 	//bool m_IsInHouse;
 	//HouseInfo* m_pLastHouse;
-	std::vector<Elite::Vector3> m_ScaredImpulses;
-	BehaviourTree::INode* m_pBehaviourTree;
-	Elite::Vector2 m_Forward;
-	Elite::Vector2 m_LookAt;
-	std::vector<HouseInfo> m_SpottedHouses;
-	bool m_AutoOrient;
+	//std::vector<Elite::Vector3> m_ScaredImpulses;
+	//BehaviourTree::INode* m_pBehaviourTree;
+	//Elite::Vector2 m_Forward;
+	//Elite::Vector2 m_LookAt;
+	//std::vector<HouseInfo> m_SpottedHouses;
+	//bool m_AutoOrient;
 
 	//Interface, used to request data from/perform actions with the AI Framework
 	IExamInterface* m_pInterface = nullptr;
