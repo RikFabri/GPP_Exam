@@ -19,7 +19,7 @@ Vector2 Seek::UpdateSteering(float dt, const AgentModel* pAgent, const IExamInte
 {
     auto dest = pInterface->NavMesh_GetClosestPathPoint(pAgent->GetTarget());
 
-    return GetNormalized(dest - pAgent->Position) * pAgent->MaxLinearSpeed;
+    return GetNormalized(dest - pAgent->Position) *pAgent->MaxLinearSpeed;
 }
 
 Vector2 CombinedSteering::UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface)
@@ -40,16 +40,12 @@ Vector2 ScaredSteering::UpdateSteering(float dt, const AgentModel* pAgent, const
 	{
 		Vector2 direction{ pAgent->Position - Vector2{vector.x, vector.y} };
 		float magnitude = direction.Normalize();
-		magnitude = 1.f / float(magnitude * 0.7);
+		magnitude = 1.f / float(magnitude);
 		float strength = vector.z;
 
 		Vector2 addedImpulse = direction * magnitude * strength;
-		//auto sumVector = scaredVector + addedImpulse;
-		//if (sumVector.SqrtMagnitude() <= 1.2f)
-		//	addedImpulse += Vector2{ -addedImpulse.y, addedImpulse.x };
 
 		scaredVector += addedImpulse;
-		//vector.z -= dt;
 	}
 	return scaredVector;
 }
