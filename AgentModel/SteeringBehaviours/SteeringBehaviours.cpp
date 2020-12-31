@@ -40,18 +40,14 @@ Vector2 ScaredSteering::UpdateSteering(float dt, const AgentModel* pAgent, const
 	{
 		Vector2 direction{ pAgent->Position - Vector2{vector.x, vector.y} };
 		float magnitude = direction.Normalize();
-		magnitude = 1.f / float(magnitude * 0.7);
+		magnitude = 1.f / float(magnitude * 0.7f);
 		float strength = vector.z;
 
 		Vector2 addedImpulse = direction * magnitude * strength;
-		//auto sumVector = scaredVector + addedImpulse;
-		//if (sumVector.SqrtMagnitude() <= 1.2f)
-		//	addedImpulse += Vector2{ -addedImpulse.y, addedImpulse.x };
 
 		scaredVector += addedImpulse;
-		//vector.z -= dt;
 	}
-	return scaredVector;
+	return scaredVector * pAgent->MaxLinearSpeed;
 }
 #pragma endregion
 

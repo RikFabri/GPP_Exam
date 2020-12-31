@@ -22,7 +22,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 		}));
 
 
-	//Bit information about the plugin
+	//Bot information about the plugin
 	//Please fill this in!!
 	info.BotName = "Gerry";
 	info.Student_FirstName = "Rik";
