@@ -31,6 +31,7 @@ private:
 	BehaviourTree::INode* m_pBehaviourTree;
 	Elite::Vector2 m_Forward;
 	Elite::Vector2 m_LookAt;
+	std::vector<HouseInfo> m_SpottedHouses;
 	bool m_AutoOrient;
 
 	//Interface, used to request data from/perform actions with the AI Framework

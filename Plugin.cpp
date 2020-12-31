@@ -52,11 +52,7 @@ void Plugin::DllInit()
 					for (const EntityInfo& entity : entities)
 					{
 						if (entity.Type == eEntityType::ENEMY)
-						{
-							//Vector2 direction{ agent.Position - entity.Location };
-							//float magnitude = direction.Normalize();
-							//magnitude = 1 / magnitude;
-							
+						{						
 							m_ScaredImpulses.push_back(Vector3{entity.Location, 6.f});
 						}
 					}
@@ -68,7 +64,6 @@ void Plugin::DllInit()
 			{
 				new Conditional([this]() -> bool
 					{
-						std::cout << "doing wander sequence" << std::endl;
 						auto agent = m_pInterface->Agent_GetInfo();
 
 						return Elite::Distance(m_Target, agent.Position) <= 20;
@@ -79,7 +74,7 @@ void Plugin::DllInit()
 
 						auto agent = m_pInterface->Agent_GetInfo();
 						float distance = Elite::randomFloat(100);
-						float angle = Elite::randomFloat(2 * M_PI);
+						float angle = Elite::randomFloat(2.f * float(M_PI));
 						m_LookAt = Vector2(cos(angle) * distance, sin(angle) * distance);
 
 						return ReturnState::Success;
@@ -171,20 +166,31 @@ void Plugin::Update(float dt)
 //This function calculates the new SteeringOutput, called once per frame
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
+	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
+	auto agentInfo = m_pInterface->Agent_GetInfo();
+
 	m_pBehaviourTree->Run();
+
+	int recentScares = std::count_if(m_ScaredImpulses.begin(), m_ScaredImpulses.end(), [](const Vector3& v) { return v.z >= 4; });
+	m_CanRun = recentScares > 0;
+	m_CanRun = m_CanRun || agentInfo.Bitten || agentInfo.WasBitten;
 
 	m_ScaredImpulses.erase(std::remove_if(m_ScaredImpulses.begin(), m_ScaredImpulses.end(), [](const Vector3& v) { return v.z <= 0.f; }), m_ScaredImpulses.end());
 
 	auto steering = SteeringPlugin_Output();
 
-	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
-	auto agentInfo = m_pInterface->Agent_GetInfo();
+	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
+	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
+
+	for (size_t i = 0; i < vHousesInFOV.size(); ++i)
+	{
+		auto it = std::find_if(m_SpottedHouses.begin(), m_SpottedHouses.end(), [&vHousesInFOV, i](const HouseInfo& h) { return h.Center == vHousesInFOV[i].Center; });
+		if (it == m_SpottedHouses.end())
+			m_SpottedHouses.push_back(vHousesInFOV[i]);
+	}
 
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
 	nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target); 
-
-	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
-	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
 
 	for (auto& e : vEntitiesInFOV)
 	{
@@ -238,7 +244,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	{
 		Vector2 direction{ agentInfo.Position - Vector2{vector.x, vector.y} };
 		float magnitude = direction.Normalize();
-		magnitude = 1 / (magnitude * 0.7);
+		magnitude = 1.f / float(magnitude * 0.7);
 		float strength = vector.z;
 
 		Vector2 addedImpulse = direction * magnitude * strength;
