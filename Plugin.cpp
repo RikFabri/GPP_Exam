@@ -17,7 +17,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pAgentModel = new AgentModel(m_pInterface);
 	m_pAgentModel->SetSteeringBehaviour(new CombinedSteering(
 		{
-			{new ScaredSteering(), 3.f},
+			{new ScaredSteering(), 1.f},
 			{new Seek(), 1.f}
 		}));
 
