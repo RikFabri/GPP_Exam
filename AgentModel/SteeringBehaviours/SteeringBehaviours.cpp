@@ -19,7 +19,7 @@ Vector2 Seek::UpdateSteering(float dt, const AgentModel* pAgent, const IExamInte
 {
     auto dest = pInterface->NavMesh_GetClosestPathPoint(pAgent->GetTarget());
 
-    return GetNormalized(dest - pAgent->Position) * pAgent->MaxLinearSpeed;
+    return GetNormalized(dest - pAgent->Position) *pAgent->MaxLinearSpeed;
 }
 
 Vector2 CombinedSteering::UpdateSteering(float dt, const AgentModel* pAgent, const IExamInterface* pInterface)
