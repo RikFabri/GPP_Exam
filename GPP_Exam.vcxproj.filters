@@ -5,11 +5,17 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="BehaviourTree\BehaviourTree.cpp" />
     <ClCompile Include="Predicates\AIPredicates.cpp" />
+    <ClCompile Include="AgentModel\AgentModel.cpp" />
+    <ClCompile Include="AgentModel\SteeringBehaviours\SteeringBehaviour.cpp" />
+    <ClCompile Include="AgentModel\SteeringBehaviours\Seek.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="BehaviourTree\BehaviourTree.h" />
     <ClInclude Include="Predicates\AIPredicates.h" />
+    <ClInclude Include="AgentModel\AgentModel.h" />
+    <ClInclude Include="AgentModel\SteeringBehaviours\SteeringBehaviour.h" />
+    <ClInclude Include="AgentModel\SteeringBehaviours\Seek.h" />
   </ItemGroup>
 </Project>

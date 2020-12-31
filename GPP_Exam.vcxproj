@@ -182,19 +182,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AgentModel\AgentModel.h" />
     <ClInclude Include="BehaviourTree\BehaviourTree.h" />
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="Predicates\AIPredicates.h" />
+    <ClInclude Include="AgentModel\SteeringBehaviours\Seek.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="AgentModel\SteeringBehaviours\SteeringBehaviour.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AgentModel\AgentModel.cpp" />
     <ClCompile Include="BehaviourTree\BehaviourTree.cpp" />
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="Predicates\AIPredicates.cpp" />
+    <ClCompile Include="AgentModel\SteeringBehaviours\Seek.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="AgentModel\SteeringBehaviours\SteeringBehaviour.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
