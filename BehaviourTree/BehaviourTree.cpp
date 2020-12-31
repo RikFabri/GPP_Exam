@@ -53,6 +53,8 @@ BehaviourTree::ReturnState BehaviourTree::Sequence::Run()
 			return returnState;
 		}
 	}
+
+	return ReturnState::Failed;
 }
 
 BehaviourTree::Selector::Selector(std::vector<INode*> NodePtrs)
@@ -74,6 +76,8 @@ BehaviourTree::ReturnState BehaviourTree::Selector::Run()
 			return returnState;
 		}
 	}
+
+	return ReturnState::Success;
 }
 
 BehaviourTree::PartialSequence::PartialSequence(std::vector<INode*> NodePtrs)
@@ -99,4 +103,6 @@ BehaviourTree::ReturnState BehaviourTree::PartialSequence::Run()
 			return returnState;
 		}
 	}
+
+	return ReturnState::Success;
 }
