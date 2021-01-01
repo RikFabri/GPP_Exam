@@ -141,18 +141,18 @@ void AgentModel::ManageInventory()
 			if (Energy <= 10 - m_pInterface->Food_GetEnergy(itemInfo))
 				if (!m_pInterface->Inventory_UseItem(slot))
 					m_pInterface->Inventory_RemoveItem(slot);
-			return;
+			continue;
 		case eItemType::GARBAGE:
 			m_pInterface->Inventory_RemoveItem(slot);
-			return;
+			continue;
 		case eItemType::MEDKIT:
 			if (Health <= 10 - m_pInterface->Medkit_GetHealth(itemInfo))
 				if (!m_pInterface->Inventory_UseItem(slot))
 					m_pInterface->Inventory_RemoveItem(slot);
-			return;
+			continue;
 		case eItemType::PISTOL:
 			m_GunSlot = slot;
-			return;
+			continue;
 		default:
 			continue;
 		}
