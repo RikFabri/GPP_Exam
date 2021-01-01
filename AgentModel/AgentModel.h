@@ -13,7 +13,9 @@ public:
 	~AgentModel();
 
 	SteeringPlugin_Output CalculateSteering(float dt);
+	void Update(float dt);
 
+	void SetTarget(const Elite::Vector2& target);
 	void SetSteeringBehaviour(BaseSteeringBehaviour* behaviour);
 	const Elite::Vector2& GetTarget() const;
 	const std::vector<Elite::Vector3>& GetScaredMap() const;
@@ -29,6 +31,10 @@ private:
 	bool m_Running;
 	bool m_AutoOrienting;
 
+	int m_GunSlot;
+
+	void LookForItems();
+	void ManageInventory();
 
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;

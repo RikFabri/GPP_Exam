@@ -15,11 +15,6 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	//This interface gives you access to certain actions the AI_Framework can perform for you
 	m_pInterface = static_cast<IExamInterface*>(pInterface);
 	m_pAgentModel = new AgentModel(m_pInterface);
-	m_pAgentModel->SetSteeringBehaviour(new CombinedSteering(
-		{
-			{new ScaredSteering(), 1.f},
-			{new Seek(), 1.f}
-		}));
 
 
 	//Bot information about the plugin
@@ -64,11 +59,11 @@ void Plugin::Update(float dt)
 		//Update target based on input
 		Elite::MouseData mouseData = m_pInterface->Input_GetMouseData(Elite::InputType::eMouseButton, Elite::InputMouseButton::eLeft);
 		const Elite::Vector2 pos = Elite::Vector2(static_cast<float>(mouseData.X), static_cast<float>(mouseData.Y));
-		m_Target = m_pInterface->Debug_ConvertScreenToWorld(pos);
+		m_pAgentModel->SetTarget(m_pInterface->Debug_ConvertScreenToWorld(pos));
 	}
 	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_Space))
 	{
-		m_CanRun = true;
+		//m_CanRun = true;
 	}
 	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_Left))
 	{
@@ -92,7 +87,7 @@ void Plugin::Update(float dt)
 	}
 	else if (m_pInterface->Input_IsKeyboardKeyUp(Elite::eScancode_Space))
 	{
-		m_CanRun = false;
+		//m_CanRun = false;
 	}
 }
 
@@ -104,32 +99,32 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	////INVENTORY USAGE DEMO
 	////********************
 
-	//if (m_GrabItem)
-	//{
-	//	ItemInfo item;
-	//	//Item_Grab > When DebugParams.AutoGrabClosestItem is TRUE, the Item_Grab function returns the closest item in range
-	//	//Keep in mind that DebugParams are only used for debugging purposes, by default this flag is FALSE
-	//	//Otherwise, use GetEntitiesInFOV() to retrieve a vector of all entities in the FOV (EntityInfo)
-	//	//Item_Grab gives you the ItemInfo back, based on the passed EntityHash (retrieved by GetEntitiesInFOV)
-	//	if (m_pInterface->Item_Grab({}, item))
-	//	{
-	//		//Once grabbed, you can add it to a specific inventory slot
-	//		//Slot must be empty
-	//		m_pInterface->Inventory_AddItem(0, item);
-	//	}
-	//}
+	if (m_GrabItem)
+	{
+		ItemInfo item;
+		//Item_Grab > When DebugParams.AutoGrabClosestItem is TRUE, the Item_Grab function returns the closest item in range
+		//Keep in mind that DebugParams are only used for debugging purposes, by default this flag is FALSE
+		//Otherwise, use GetEntitiesInFOV() to retrieve a vector of all entities in the FOV (EntityInfo)
+		//Item_Grab gives you the ItemInfo back, based on the passed EntityHash (retrieved by GetEntitiesInFOV)
+		if (m_pInterface->Item_Grab({}, item))
+		{
+			//Once grabbed, you can add it to a specific inventory slot
+			//Slot must be empty
+			m_pInterface->Inventory_AddItem(0, item);
+		}
+	}
 
-	//if (m_UseItem)
-	//{
-	//	//Use an item (make sure there is an item at the given inventory slot)
-	//	m_pInterface->Inventory_UseItem(0);
-	//}
+	if (m_UseItem)
+	{
+		//Use an item (make sure there is an item at the given inventory slot)
+		m_pInterface->Inventory_UseItem(0);
+	}
 
-	//if (m_RemoveItem)
-	//{
-	//	//Remove an item from a inventory slot
-	//	m_pInterface->Inventory_RemoveItem(0);
-	//}
+	if (m_RemoveItem)
+	{
+		//Remove an item from a inventory slot
+		m_pInterface->Inventory_RemoveItem(0);
+	}
 #pragma endregion
 
 	m_GrabItem = false; //Reset State
@@ -144,42 +139,4 @@ void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
 	m_pInterface->Draw_SolidCircle(m_pAgentModel->GetTarget(), .7f, { 0,0 }, { 1, 0, 0 });
-}
-
-vector<HouseInfo> Plugin::GetHousesInFOV() const
-{
-	vector<HouseInfo> vHousesInFOV = {};
-
-	HouseInfo hi = {};
-	for (int i = 0;; ++i)
-	{
-		if (m_pInterface->Fov_GetHouseByIndex(i, hi))
-		{
-			vHousesInFOV.push_back(hi);
-			continue;
-		}
-
-		break;
-	}
-
-	return vHousesInFOV;
-}
-
-vector<EntityInfo> Plugin::GetEntitiesInFOV() const
-{
-	vector<EntityInfo> vEntitiesInFOV = {};
-
-	EntityInfo ei = {};
-	for (int i = 0;; ++i)
-	{
-		if (m_pInterface->Fov_GetEntityByIndex(i, ei))
-		{
-			vEntitiesInFOV.push_back(ei);
-			continue;
-		}
-
-		break;
-	}
-
-	return vEntitiesInFOV;
 }

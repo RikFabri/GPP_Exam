@@ -11,7 +11,13 @@ AgentModel::AgentModel(IExamInterface* pInterface)
 	, m_pInterface(pInterface)
 	, m_LookAt(m_Target)
 	, m_AutoOrienting(true)
+	, m_GunSlot(-1)
 {
+	SetSteeringBehaviour(new CombinedSteering(
+		{
+			{new ScaredSteering(), 1.f},
+			{new Seek(), 1.f}
+		}));
 	ConstructBehaviourTree();
 }
 
@@ -23,19 +29,12 @@ AgentModel::~AgentModel()
 
 SteeringPlugin_Output AgentModel::CalculateSteering(float dt)
 {
-	AgentInfo::operator=(m_pInterface->Agent_GetInfo());
-
-	int recentScares = std::count_if(m_ScaredMap.begin(), m_ScaredMap.end(), [](const Vector3& v) { return v.z >= 4; });
-	m_Running = recentScares > 0;
-	m_Running = m_Running || Bitten || WasBitten;
-
-	m_ScaredMap.erase(std::remove_if(m_ScaredMap.begin(), m_ScaredMap.end(), [](const Vector3& v) { return v.z <= 0.f; }), m_ScaredMap.end());
+	Update(dt);
 
 	SteeringPlugin_Output steering{};
 
-	m_pBehaviourTree->Run();
-
 	steering.RunMode = m_Running;
+
 	//Steering
 	steering.LinearVelocity = m_pCurrentSteering->UpdateSteering(dt, this, m_pInterface);
 
@@ -44,6 +43,21 @@ SteeringPlugin_Output AgentModel::CalculateSteering(float dt)
 	float DesiredOrientation = Elite::GetOrientationFromVelocity(m_LookAt -Position);
 	steering.AngularVelocity = DesiredOrientation - Orientation;
 
+	return steering;
+}
+
+void AgentModel::Update(float dt)
+{
+	AgentInfo::operator=(m_pInterface->Agent_GetInfo());
+
+	int recentScares = std::count_if(m_ScaredMap.begin(), m_ScaredMap.end(), [](const Vector3& v) { return v.z >= 4; });
+	m_Running = recentScares > 0;
+	m_Running = m_Running || Bitten || WasBitten;
+
+	m_ScaredMap.erase(std::remove_if(m_ScaredMap.begin(), m_ScaredMap.end(), [](const Vector3& v) { return v.z <= 0.f; }), m_ScaredMap.end());
+
+	m_pBehaviourTree->Run();
+
 	for (Vector3& v : m_ScaredMap)
 	{
 		std::cout << "strength: " << v.z << std::endl;
@@ -51,7 +65,12 @@ SteeringPlugin_Output AgentModel::CalculateSteering(float dt)
 	}
 	std::cout << m_ScaredMap.size() << std::endl;
 
-	return steering;
+	LookForItems();
+}
+
+void AgentModel::SetTarget(const Elite::Vector2& target)
+{
+	m_Target = target;
 }
 
 void AgentModel::SetSteeringBehaviour(BaseSteeringBehaviour* behaviour)
@@ -68,6 +87,78 @@ const Elite::Vector2& AgentModel::GetTarget() const
 const std::vector<Elite::Vector3>& AgentModel::GetScaredMap() const
 {
 	return m_ScaredMap;
+}
+
+void AgentModel::LookForItems()
+{
+	auto entities = GetEntitiesInFOV();
+	for (auto entity : entities)
+	{
+		if (entity.Type == eEntityType::ITEM)
+		{
+			ItemInfo itemInfo;
+			m_pInterface->Item_GetInfo(entity, itemInfo);
+
+			//Destroy item if garbage and in range, otherwise ignore it
+			if (itemInfo.Type == eItemType::GARBAGE)
+				if (!m_pInterface->Item_Destroy(entity))
+					continue;
+
+			//Try grabbing item, if not in range set it as target.
+			if (!m_pInterface->Item_Grab(entity, itemInfo))
+			{
+				m_Target = entity.Location;
+				break;
+			}
+
+			// Try adding item to inventory
+			const UINT inventoryCapacity{ m_pInterface->Inventory_GetCapacity() };
+			UINT inventorySlot{ 0 };
+			bool success = false;
+			do
+			{
+				success = m_pInterface->Inventory_AddItem(inventorySlot++, itemInfo);
+			} while (!success && inventorySlot < inventoryCapacity);
+		}
+	}
+
+	ManageInventory();
+}
+
+void AgentModel::ManageInventory()
+{
+	ItemInfo itemInfo;
+	const UINT NrOfInventorySlots{ m_pInterface->Inventory_GetCapacity() };
+
+	for (UINT slot = 0; slot < NrOfInventorySlots; ++slot)
+	{
+		if (!m_pInterface->Inventory_GetItem(slot, itemInfo))
+			continue;
+
+		switch (itemInfo.Type)
+		{
+		case eItemType::FOOD:
+			if (Energy <= 10 - m_pInterface->Food_GetEnergy(itemInfo))
+				if (!m_pInterface->Inventory_UseItem(slot))
+					m_pInterface->Inventory_RemoveItem(slot);
+			return;
+		case eItemType::GARBAGE:
+			m_pInterface->Inventory_RemoveItem(slot);
+			return;
+		case eItemType::MEDKIT:
+			if (Health <= 10 - m_pInterface->Medkit_GetHealth(itemInfo))
+				if (!m_pInterface->Inventory_UseItem(slot))
+					m_pInterface->Inventory_RemoveItem(slot);
+			return;
+		case eItemType::PISTOL:
+			m_GunSlot = slot;
+			return;
+		default:
+			continue;
+		}
+
+	}
+	
 }
 
 vector<HouseInfo> AgentModel::GetHousesInFOV() const
@@ -131,8 +222,8 @@ void AgentModel::ConstructBehaviourTree()
 					{
 						if (entity.Type == eEntityType::ENEMY)
 						{
-							//The 6.f is how many seconds the location stays dangerous.
-							m_ScaredMap.push_back(Vector3{entity.Location, 6.f});
+							const float lifetime{ 6.f };
+							m_ScaredMap.push_back(Vector3{entity.Location, lifetime});
 						}
 					}
 					return ReturnState::Success;
