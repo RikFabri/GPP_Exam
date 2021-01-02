@@ -20,18 +20,21 @@ public:
 	const Elite::Vector2& GetTarget() const;
 	const std::vector<Elite::Vector3>& GetScaredMap() const;
 private:
+	std::vector<HouseInfo> m_RememberedHouses;
 	std::vector<Elite::Vector3> m_ScaredMap;
 
 	BaseSteeringBehaviour* m_pCurrentSteering;
 	BehaviourTree::INode* m_pBehaviourTree;
 	IExamInterface* m_pInterface;
 
+	EnemyInfo m_TargetZombie;
 	Elite::Vector2 m_Target;
 	Elite::Vector2 m_LookAt;
-	bool m_Running;
 	bool m_AutoOrienting;
+	bool m_Shooting;
+	bool m_Running;
 
-	int m_GunSlot;
+	int m_NrOfGuns;
 
 	void LookForItems();
 	void ManageInventory();

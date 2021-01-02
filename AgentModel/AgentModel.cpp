@@ -11,8 +11,11 @@ AgentModel::AgentModel(IExamInterface* pInterface)
 	, m_pInterface(pInterface)
 	, m_LookAt(m_Target)
 	, m_AutoOrienting(true)
-	, m_GunSlot(-1)
+	, m_NrOfGuns(0)
+	, m_TargetZombie()
 {
+	m_TargetZombie.EnemyHash = -1;
+
 	SetSteeringBehaviour(new CombinedSteering(
 		{
 			{new ScaredSteering(), 1.f},
@@ -40,7 +43,7 @@ SteeringPlugin_Output AgentModel::CalculateSteering(float dt)
 
 	//Orienting
 	steering.AutoOrient = m_AutoOrienting;
-	float DesiredOrientation = Elite::GetOrientationFromVelocity(m_LookAt -Position);
+	float DesiredOrientation = Elite::GetOrientationFromVelocity(m_LookAt - Position);
 	steering.AngularVelocity = DesiredOrientation - Orientation;
 
 	return steering;
@@ -48,24 +51,57 @@ SteeringPlugin_Output AgentModel::CalculateSteering(float dt)
 
 void AgentModel::Update(float dt)
 {
+	// Sync model to actual agent
 	AgentInfo::operator=(m_pInterface->Agent_GetInfo());
 
+	// Decide on whether to run or not
 	int recentScares = std::count_if(m_ScaredMap.begin(), m_ScaredMap.end(), [](const Vector3& v) { return v.z >= 4; });
 	m_Running = recentScares > 0;
 	m_Running = m_Running || Bitten || WasBitten;
 
+	// Clean up scared map
 	m_ScaredMap.erase(std::remove_if(m_ScaredMap.begin(), m_ScaredMap.end(), [](const Vector3& v) { return v.z <= 0.f; }), m_ScaredMap.end());
 
+	// Run behaviourtree
 	m_pBehaviourTree->Run();
 
+	// Update scared map
 	for (Vector3& v : m_ScaredMap)
-	{
-		std::cout << "strength: " << v.z << std::endl;
 		v.z -= dt;
+
+	// Remember zombies
+	m_TargetZombie.EnemyHash = -1;
+	const auto entities = GetEntitiesInFOV();
+
+	for (const EntityInfo& entity : entities)
+	{
+		if (entity.Type == eEntityType::ENEMY)
+		{
+			EnemyInfo enemyInfo;
+			m_pInterface->Enemy_GetInfo(entity, enemyInfo);
+
+			if (enemyInfo.Type != eEnemyType::ZOMBIE_NORMAL || m_TargetZombie.EnemyHash == -1)
+				m_TargetZombie = enemyInfo;
+
+			const float lifetime{ 6.f };
+			m_ScaredMap.push_back(Vector3{ entity.Location, lifetime });
+		}
 	}
-	std::cout << m_ScaredMap.size() << std::endl;
+
+	// Remember houses
+	const auto houses = GetHousesInFOV();
+
+	for (const HouseInfo& houseInfo : houses)
+	{
+		const auto houseIterator = std::find_if(m_RememberedHouses.begin(), m_RememberedHouses.end(), [houseInfo](auto& h) {return h.Center == houseInfo.Center; });
+		if (houseIterator == m_RememberedHouses.end())
+			m_RememberedHouses.push_back(houseInfo);
+	}
 
 	LookForItems();
+
+	// Reset flags
+	m_Shooting = false;
 }
 
 void AgentModel::SetTarget(const Elite::Vector2& target)
@@ -119,6 +155,10 @@ void AgentModel::LookForItems()
 			{
 				success = m_pInterface->Inventory_AddItem(inventorySlot++, itemInfo);
 			} while (!success && inventorySlot < inventoryCapacity);
+
+			if (success)
+				if (itemInfo.Type == eItemType::PISTOL)
+					++m_NrOfGuns;
 		}
 	}
 
@@ -151,14 +191,20 @@ void AgentModel::ManageInventory()
 					m_pInterface->Inventory_RemoveItem(slot);
 			continue;
 		case eItemType::PISTOL:
-			m_GunSlot = slot;
+			if (m_Shooting)
+			{
+				m_Shooting = false;
+				if (!m_pInterface->Inventory_UseItem(slot))
+				{
+					m_pInterface->Inventory_RemoveItem(slot);
+					--m_NrOfGuns;
+				}
+			}
 			continue;
 		default:
 			continue;
 		}
-
 	}
-	
 }
 
 vector<HouseInfo> AgentModel::GetHousesInFOV() const
@@ -202,10 +248,40 @@ vector<EntityInfo> AgentModel::GetEntitiesInFOV() const
 
 void AgentModel::ConstructBehaviourTree()
 {
-	//Construct behaviourTree
+	// Construct behaviourTree
 	using namespace BehaviourTree;
 	m_pBehaviourTree = new Selector
 	{ {
+			// Defending upon damage
+			new PartialSequence
+			{{
+					new Conditional([this]() -> bool { return (Bitten || WasBitten) && m_NrOfGuns > 0; }),
+					new Action([this]() -> ReturnState
+						{
+							m_AutoOrienting = false;
+							m_Shooting = false;
+
+							if (m_TargetZombie.EnemyHash != -1)
+								m_LookAt = m_TargetZombie.Location;
+							else
+								m_LookAt = Position - LinearVelocity;
+
+							const float aimOffset{ float(M_PI) / 70.f };
+							if (std::abs(GetOrientationFromVelocity(m_LookAt - Position) - Orientation) > aimOffset)
+								return ReturnState::Running;
+
+							if (m_TargetZombie.EnemyHash != -1)
+							{
+								m_Shooting = true;
+								return ReturnState::Running;
+							}
+							else
+							{
+								m_AutoOrienting = true;
+								return ReturnState::Success;
+							}
+						}),
+			}},
 			new Sequence
 			{ {
 			new Conditional([this]()
@@ -216,20 +292,10 @@ void AgentModel::ConstructBehaviourTree()
 			new Action([this]() -> ReturnState
 				{
 					m_AutoOrienting = true;
-					auto entities = GetEntitiesInFOV();
-
-					for (const EntityInfo& entity : entities)
-					{
-						if (entity.Type == eEntityType::ENEMY)
-						{
-							const float lifetime{ 6.f };
-							m_ScaredMap.push_back(Vector3{entity.Location, lifetime});
-						}
-					}
 					return ReturnState::Success;
-				}),
+				})
 		} },
-		//Wander
+		// Go to position, look around when turning
 		new PartialSequence(
 			{
 				new Conditional([this]() -> bool
@@ -262,5 +328,4 @@ void AgentModel::ConstructBehaviourTree()
 				})
 			})
 	} };
-
 }
