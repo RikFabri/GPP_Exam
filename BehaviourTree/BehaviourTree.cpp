@@ -19,19 +19,19 @@ BehaviourTree::Conditional::Conditional(std::function<bool()> predicate)
 {
 }
 
-BehaviourTree::ReturnState BehaviourTree::Conditional::Run()
+BehaviourTree::ReturnState BehaviourTree::Conditional::Run(float dt)
 {
 	return m_Predicate() ? ReturnState::Success : ReturnState::Failed;
 }
 
-BehaviourTree::Action::Action(std::function<ReturnState()> action)
+BehaviourTree::Action::Action(std::function<ReturnState(float)> action)
 	: m_Action(action)
 {
 }
 
-BehaviourTree::ReturnState BehaviourTree::Action::Run()
+BehaviourTree::ReturnState BehaviourTree::Action::Run(float dt)
 {
-	return m_Action();
+	return m_Action(dt);
 }
 
 BehaviourTree::Sequence::Sequence(std::vector<INode*> NodePtrs)
@@ -39,11 +39,11 @@ BehaviourTree::Sequence::Sequence(std::vector<INode*> NodePtrs)
 {
 }
 
-BehaviourTree::ReturnState BehaviourTree::Sequence::Run()
+BehaviourTree::ReturnState BehaviourTree::Sequence::Run(float dt)
 {
 	for (auto childNodePtr : m_NodePointers)
 	{
-		ReturnState returnState = childNodePtr->Run();
+		ReturnState returnState = childNodePtr->Run(dt);
 
 		switch (returnState)
 		{
@@ -62,11 +62,11 @@ BehaviourTree::Selector::Selector(std::vector<INode*> NodePtrs)
 {
 }
 
-BehaviourTree::ReturnState BehaviourTree::Selector::Run()
+BehaviourTree::ReturnState BehaviourTree::Selector::Run(float dt)
 {
 	for (auto childNodePtr : m_NodePointers)
 	{
-		ReturnState returnState = childNodePtr->Run();
+		ReturnState returnState = childNodePtr->Run(dt);
 
 		switch (returnState)
 		{
@@ -86,11 +86,11 @@ BehaviourTree::PartialSequence::PartialSequence(std::vector<INode*> NodePtrs)
 {
 }
 
-BehaviourTree::ReturnState BehaviourTree::PartialSequence::Run()
+BehaviourTree::ReturnState BehaviourTree::PartialSequence::Run(float dt)
 {
 	for (size_t index = m_RunningIndex; index < m_NodePointers.size(); ++index)
 	{
-		ReturnState returnState = m_NodePointers[index]->Run();
+		ReturnState returnState = m_NodePointers[index]->Run(dt);
 
 		switch (returnState)
 		{

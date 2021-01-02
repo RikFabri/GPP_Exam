@@ -16,7 +16,7 @@ namespace BehaviourTree
 		INode() = default;
 		virtual ~INode() = default;
 
-		virtual ReturnState Run() = 0;
+		virtual ReturnState Run(float dt) = 0;
 	};
 	// --------------------------------------------------------
 
@@ -28,7 +28,7 @@ namespace BehaviourTree
 		Composite(std::vector<INode*> NodePtrs);
 		virtual ~Composite();
 
-		virtual ReturnState Run() override = 0;
+		virtual ReturnState Run(float dt) override = 0;
 	protected:
 		std::vector<INode*> m_NodePointers;
 	};
@@ -39,7 +39,7 @@ namespace BehaviourTree
 	public:
 		Sequence(std::vector<INode*> NodePtrs);
 
-		ReturnState Run() override;
+		ReturnState Run(float dt) override;
 	private:
 	};
 
@@ -49,7 +49,7 @@ namespace BehaviourTree
 	public:
 		PartialSequence(std::vector<INode*> NodePtrs);
 
-		ReturnState Run() override;
+		ReturnState Run(float dt) override;
 	private:
 		size_t m_RunningIndex;
 	};
@@ -60,7 +60,7 @@ namespace BehaviourTree
 	public:
 		Selector(std::vector<INode*> NodePtrs);
 
-		ReturnState Run() override;
+		ReturnState Run(float dt) override;
 	};
 	// --------------------------------------------------------
 
@@ -72,7 +72,7 @@ namespace BehaviourTree
 	public:
 		Conditional(std::function<bool()> predicate);
 
-		ReturnState Run() override;
+		ReturnState Run(float dt) override;
 	private:
 		std::function<bool()> m_Predicate;
 	};
@@ -81,11 +81,11 @@ namespace BehaviourTree
 	class Action final : public INode
 	{
 	public:
-		Action(std::function<ReturnState()> action);
+		Action(std::function<ReturnState(float)> action);
 
-		ReturnState Run() override;
+		ReturnState Run(float dt) override;
 	private:
-		std::function<ReturnState()> m_Action;
+		std::function<ReturnState(float)> m_Action;
 	};
 	// --------------------------------------------------------
 };

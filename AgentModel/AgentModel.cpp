@@ -13,12 +13,19 @@ AgentModel::AgentModel(IExamInterface* pInterface)
 	, m_AutoOrienting(true)
 	, m_NrOfGuns(0)
 	, m_TargetZombie()
+	, m_ExplorePathAngles(float(M_PI) / 2.f)
+	, m_MaxExploreDistance(200)
+	, m_CurrentExploreAngle(float(M_PI) / 4.f)
+	, m_CurrentExploreDistance(50)
+	, m_ExploreDistanceChanges(10)
+	, m_ExplorePathGrowing(true)
+	, m_Looting(false)
 {
 	m_TargetZombie.EnemyHash = -1;
 
 	SetSteeringBehaviour(new CombinedSteering(
 		{
-			{new ScaredSteering(), 1.f},
+			{new ScaredSteering(), 0.5f},
 			{new Seek(), 1.f}
 		}));
 	ConstructBehaviourTree();
@@ -63,7 +70,7 @@ void AgentModel::Update(float dt)
 	m_ScaredMap.erase(std::remove_if(m_ScaredMap.begin(), m_ScaredMap.end(), [](const Vector3& v) { return v.z <= 0.f; }), m_ScaredMap.end());
 
 	// Run behaviourtree
-	m_pBehaviourTree->Run();
+	m_pBehaviourTree->Run(dt);
 
 	// Update scared map
 	for (Vector3& v : m_ScaredMap)
@@ -83,6 +90,9 @@ void AgentModel::Update(float dt)
 			if (enemyInfo.Type != eEnemyType::ZOMBIE_NORMAL || m_TargetZombie.EnemyHash == -1)
 				m_TargetZombie = enemyInfo;
 
+			//if (Distance(Position, enemyInfo.Location) < 10)
+			//	m_Shooting = true;
+
 			const float lifetime{ 6.f };
 			m_ScaredMap.push_back(Vector3{ entity.Location, lifetime });
 		}
@@ -97,6 +107,15 @@ void AgentModel::Update(float dt)
 		if (houseIterator == m_RememberedHouses.end())
 			m_RememberedHouses.push_back(houseInfo);
 	}
+
+	if (m_NrOfGuns <= 0 && m_RememberedHouses.size() > 0 && !m_Looting)
+	{
+		m_Looting = true;
+		m_Target = m_RememberedHouses[std::rand() % m_RememberedHouses.size()].Center;
+	}
+
+	if (m_NrOfGuns > 0)
+		m_Looting = false;
 
 	LookForItems();
 
@@ -137,8 +156,10 @@ void AgentModel::LookForItems()
 
 			//Destroy item if garbage and in range, otherwise ignore it
 			if (itemInfo.Type == eItemType::GARBAGE)
-				if (!m_pInterface->Item_Destroy(entity))
-					continue;
+			{
+				m_pInterface->Item_Destroy(entity);
+				continue;
+			}
 
 			//Try grabbing item, if not in range set it as target.
 			if (!m_pInterface->Item_Grab(entity, itemInfo))
@@ -256,23 +277,47 @@ void AgentModel::ConstructBehaviourTree()
 			new PartialSequence
 			{{
 					new Conditional([this]() -> bool { return (Bitten || WasBitten) && m_NrOfGuns > 0; }),
-					new Action([this]() -> ReturnState
+					// Rotate towards target
+					new Action([this](float dt) -> ReturnState
 						{
+							m_DefenseTimer = 0;
 							m_AutoOrienting = false;
-							m_Shooting = false;
 
 							if (m_TargetZombie.EnemyHash != -1)
+							{
 								m_LookAt = m_TargetZombie.Location;
+							}
 							else
+							{
 								m_LookAt = Position - LinearVelocity;
+								return ReturnState::Running;
+							}
 
 							const float aimOffset{ float(M_PI) / 70.f };
 							if (std::abs(GetOrientationFromVelocity(m_LookAt - Position) - Orientation) > aimOffset)
 								return ReturnState::Running;
 
+							return ReturnState::Success;
+						}),
+					new Action([this](float dt)
+						{
+							m_DefenseTimer += dt;
+							if (m_DefenseTimer >= 4)
+								return ReturnState::Failed;
+
+							// Keep aim
+							m_LookAt = m_TargetZombie.Location;
+
 							if (m_TargetZombie.EnemyHash != -1)
 							{
-								m_Shooting = true;
+								// Keep aim
+								const float aimOffset{ float(M_PI) / 70.f };
+								if (std::abs(GetOrientationFromVelocity(m_LookAt - Position) - Orientation) <= aimOffset)
+								{
+									m_Shooting = true;
+									std::cout << "shoot" << std::endl;
+									ReturnState::Success;
+								}
 								return ReturnState::Running;
 							}
 							else
@@ -280,7 +325,8 @@ void AgentModel::ConstructBehaviourTree()
 								m_AutoOrienting = true;
 								return ReturnState::Success;
 							}
-						}),
+
+						})
 			}},
 			new Sequence
 			{ {
@@ -289,7 +335,7 @@ void AgentModel::ConstructBehaviourTree()
 					return AIPredicates::SeesZombie(std::bind(&AgentModel::GetEntitiesInFOV, this));
 				}
 			),
-			new Action([this]() -> ReturnState
+			new Action([this](float dt) -> ReturnState
 				{
 					m_AutoOrienting = true;
 					return ReturnState::Success;
@@ -302,24 +348,34 @@ void AgentModel::ConstructBehaviourTree()
 					{
 						return Elite::Distance(m_Target, Position) <= 20;
 					}),
-				new Action([this]() -> ReturnState
+				new Action([this](float dt) -> ReturnState
 					{
 						m_AutoOrienting = false;
 
-						float distance = Elite::randomFloat(100);
-						float angle = Elite::randomFloat(2.f * float(M_PI));
-						m_LookAt = Vector2(cos(angle) * distance, sin(angle) * distance);
+						float sign = m_ExplorePathGrowing ? 1 : -1;
+						m_CurrentExploreDistance += m_ExploreDistanceChanges * sign;
+						m_CurrentExploreAngle += m_ExplorePathAngles;
+
+						if (m_CurrentExploreAngle >= 2.f * float(M_PI))
+							m_CurrentExploreAngle -= 2.f * float(M_PI);
+
+						if (m_CurrentExploreDistance > m_MaxExploreDistance || m_CurrentExploreDistance < m_ExploreDistanceChanges)
+							m_ExplorePathGrowing = !m_ExplorePathGrowing;
+						
+						m_LookAt = Vector2(
+							cos(m_CurrentExploreAngle) * m_CurrentExploreDistance,
+							sin(m_CurrentExploreAngle) * m_CurrentExploreDistance);
 
 						return ReturnState::Success;
 					}),
-				new Action([this]() -> ReturnState
+				new Action([this](float dt) -> ReturnState
 					{
 						if (Elite::DistanceSquared(m_Target, Position) <= 10)
 							return ReturnState::Success;
 
 						return ReturnState::Running;
 					}),
-				new Action([this]() mutable -> ReturnState
+				new Action([this](float dt) mutable -> ReturnState
 				{
 					m_Target = m_LookAt;
 					m_AutoOrienting = true;

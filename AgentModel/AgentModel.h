@@ -34,7 +34,17 @@ private:
 	bool m_Shooting;
 	bool m_Running;
 
+	float m_DefenseTimer;
 	int m_NrOfGuns;
+	bool m_Looting;
+
+	// Exploration path
+	const float m_MaxExploreDistance;
+	const float m_ExplorePathAngles;
+	const float m_ExploreDistanceChanges;
+	float m_CurrentExploreDistance;
+	float m_CurrentExploreAngle;
+	bool m_ExplorePathGrowing;
 
 	void LookForItems();
 	void ManageInventory();
